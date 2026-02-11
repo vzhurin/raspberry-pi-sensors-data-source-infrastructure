@@ -1,0 +1,10 @@
+services:
+  sensors:
+    container_name: sensors
+    build:
+      dockerfile: sensors.Dockerfile
+    devices:
+      - /dev/i2c-1
+    ports:
+      - "{{ prometheus_metrics_port }}:{{ prometheus_metrics_port }}"
+    restart: unless-stopped

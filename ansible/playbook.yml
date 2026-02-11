@@ -1,0 +1,56 @@
+- hosts: all
+  vars_files:
+    - vars/vars.yml
+  tasks:
+    - ansible.builtin.apt:
+        name: acl
+        state: present
+      become: true
+
+    - ansible.builtin.user:
+        name: "{{ service_user }}"
+        system: true
+        state: present
+      become: true
+
+    - ansible.builtin.file:
+        path: "{{ docker_dir }}"
+        state: directory
+        mode: "{{ directory_mode }}"
+      become: true
+
+    - ansible.builtin.template:
+        src: "{{ playbook_dir }}/../docker/docker-compose.yaml.j2"
+        dest: "{{ docker_dir }}/docker-compose.yaml"
+        mode: "{{ file_mode }}"
+      become: true
+
+    - ansible.builtin.template:
+        src: "{{ playbook_dir }}/../docker/sensors.Dockerfile.j2"
+        dest: "{{ docker_dir }}/sensors.Dockerfile"
+        mode: "{{ file_mode }}"
+      become: true
+
+    - ansible.builtin.include_role:
+        name: geerlingguy.docker
+        apply:
+          become: true
+      vars:
+        docker_users:
+          - "{{ service_user }}"
+
+    - ansible.builtin.systemd:
+        name: docker
+        enabled: true
+
+    - community.docker.docker_compose_v2:
+        project_src: "{{ docker_dir }}"
+        state: absent
+      become: true
+      become_user: "{{ service_user }}"
+
+    - community.docker.docker_compose_v2:
+        project_src: "{{ docker_dir }}"
+        build: always
+      become: true
+      become_user: "{{ service_user }}"

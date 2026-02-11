@@ -1,0 +1,3 @@
+FROM ubuntu:latest
+ADD --chmod=u+rx {{ sensors_bin_url }} /sensors
+CMD ["/sensors"]
