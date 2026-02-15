@@ -2,55 +2,45 @@
   vars_files:
     - vars/vars.yml
   tasks:
-    - ansible.builtin.apt:
-        name: acl
-        state: present
-      become: true
-
     - ansible.builtin.user:
         name: "{{ service_user }}"
         system: true
         state: present
+        groups:
+          - i2c
+          - plugdev
+        append: yes
       become: true
 
     - ansible.builtin.file:
-        path: "{{ docker_dir }}"
+        path: "{{ bin_dir }}"
         state: directory
         mode: "{{ directory_mode }}"
       become: true
 
-    - ansible.builtin.template:
-        src: "{{ playbook_dir }}/../docker/docker-compose.yaml.j2"
-        dest: "{{ docker_dir }}/docker-compose.yaml"
+    - ansible.builtin.get_url:
+        url: "{{ bin_url }}"
+        dest: "{{ bin_dir }}/{{ bin_file }}"
         mode: "{{ file_mode }}"
       become: true
 
-    - ansible.builtin.template:
-        src: "{{ playbook_dir }}/../docker/sensors.Dockerfile.j2"
-        dest: "{{ docker_dir }}/sensors.Dockerfile"
-        mode: "{{ file_mode }}"
+    - ansible.builtin.file:
+        path: "{{ bin_dir }}/{{ bin_file }}"
+        mode: "{{ file_mode_executable }}"
       become: true
 
-    - ansible.builtin.include_role:
-        name: geerlingguy.docker
-        apply:
-          become: true
-      vars:
-        docker_users:
-          - "{{ service_user }}"
+    - ansible.builtin.template:
+        src: "{{ playbook_dir }}/../systemd/sensor.service.j2"
+        dest: "/etc/systemd/system/sensor.service"
+        mode: "{{ file_mode }}"
+      become: true
 
     - ansible.builtin.systemd:
-        name: docker
         enabled: true
-
-    - community.docker.docker_compose_v2:
-        project_src: "{{ docker_dir }}"
-        state: absent
+        name: sensor
       become: true
-      become_user: "{{ service_user }}"
 
-    - community.docker.docker_compose_v2:
-        project_src: "{{ docker_dir }}"
-        build: always
+    - ansible.builtin.systemd:
+        name: sensor
+        state: restarted
       become: true
-      become_user: "{{ service_user }}"
